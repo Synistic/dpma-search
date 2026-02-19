@@ -5,6 +5,19 @@ import type { DetailResult } from "./scraper.js";
 
 const kernel = new Kernel();
 
+async function connectWithRetry(cdpUrl: string, retries = 5, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await chromium.connectOverCDP(cdpUrl, { timeout: 60000 });
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.log(`  Verbindung fehlgeschlagen, Retry ${i + 1}/${retries}...`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw new Error("connectOverCDP failed after retries");
+}
+
 async function main() {
   const query = process.argv[2];
   if (!query) {
@@ -28,7 +41,7 @@ async function main() {
     console.log("Browser erstellt. Verbinde via CDP...");
 
     // Playwright über CDP verbinden
-    const pw = await chromium.connectOverCDP(cdpUrl, { timeout: 60000 });
+    const pw = await connectWithRetry(cdpUrl);
     const context = pw.contexts()[0];
     if (!context) throw new Error("Kein Browser-Context verfügbar");
     const page = context.pages()[0] ?? (await context.newPage());

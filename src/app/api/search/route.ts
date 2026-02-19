@@ -14,6 +14,18 @@ function encodeSSE(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+async function connectWithRetry(cdpUrl: string, retries = 5, delayMs = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await chromium.connectOverCDP(cdpUrl, { timeout: 60000 });
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw new Error("connectOverCDP failed after retries");
+}
+
 export async function POST(req: NextRequest) {
   const { query } = await req.json();
 
@@ -39,9 +51,7 @@ export async function POST(req: NextRequest) {
 
         send("status", { message: "Verbinde mit Browser..." });
 
-        const pw = await chromium.connectOverCDP(browser.cdp_ws_url, {
-          timeout: 60000,
-        });
+        const pw = await connectWithRetry(browser.cdp_ws_url);
         const context = pw.contexts()[0];
         if (!context) throw new Error("Kein Browser-Context");
         const page = context.pages()[0] ?? (await context.newPage());
