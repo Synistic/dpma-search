@@ -1,6 +1,4 @@
 import { NextRequest } from "next/server";
-import Kernel from "@onkernel/sdk";
-import { chromium } from "playwright-core";
 import {
   searchDPMA,
   parseSearchResults,
@@ -27,6 +25,9 @@ export async function POST(req: NextRequest) {
       const send = (event: string, data: unknown) => {
         controller.enqueue(encoder.encode(encodeSSE(event, data)));
       };
+
+      const Kernel = (await import("@onkernel/sdk")).default;
+      const { chromium } = await import("playwright-core");
 
       const kernel = new Kernel();
       let browser: Awaited<ReturnType<typeof kernel.browsers.create>> | null =
