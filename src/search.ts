@@ -1,5 +1,5 @@
 import Kernel from "@onkernel/sdk";
-import puppeteer from "puppeteer-core";
+import { chromium } from "playwright-core";
 import { searchDPMA, parseSearchResults, scrapeDetailPage } from "./scraper.js";
 import type { DetailResult } from "./scraper.js";
 
@@ -27,10 +27,11 @@ async function main() {
     const cdpUrl = browser.cdp_ws_url;
     console.log("Browser erstellt. Verbinde via CDP...");
 
-    // Puppeteer über CDP verbinden
-    const pw = await puppeteer.connect({ browserWSEndpoint: cdpUrl });
-    const pages = await pw.pages();
-    const page = pages[0] ?? (await pw.newPage());
+    // Playwright über CDP verbinden
+    const pw = await chromium.connectOverCDP(cdpUrl, { timeout: 60000 });
+    const context = pw.contexts()[0];
+    if (!context) throw new Error("Kein Browser-Context verfügbar");
+    const page = context.pages()[0] ?? (await context.newPage());
 
     // DPMA durchsuchen
     console.log(`Suche nach "${query}" im DPMA-Register...\n`);

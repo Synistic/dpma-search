@@ -1,4 +1,4 @@
-import type { Page } from "puppeteer-core";
+import type { Page } from "playwright-core";
 import { enrichNizzaClasses } from "./nizza.js";
 
 export interface SearchResult {
@@ -26,19 +26,17 @@ export interface DetailResult {
 const DPMA_BASE = "https://register.dpma.de/DPMAregister/marke/basis";
 
 export async function searchDPMA(page: Page, query: string): Promise<void> {
-  await page.goto(DPMA_BASE, { waitUntil: "networkidle0", timeout: 30000 });
+  await page.goto(DPMA_BASE, { waitUntil: "networkidle", timeout: 30000 });
 
-  // Suchfeld "Marke" ausfüllen
-  await page.evaluate((q) => {
-    (document.querySelector('input#marke[type="text"]') as HTMLInputElement).value = q;
-  }, query);
+  // Suchfeld "Marke" ausfüllen - exakter Selektor: input#marke (type=text, name=marke)
+  await page.fill('input#marke[type="text"]', query);
 
   // "Recherche starten" Button klicken
   await page.click('input#rechercheStarten');
 
   // Warten auf Ergebnisse
-  await page.waitForNetworkIdle({ idleTime: 1000 });
-  await new Promise((r) => setTimeout(r, 3000));
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(3000);
 }
 
 export async function parseSearchResults(page: Page): Promise<SearchResult[]> {
@@ -183,8 +181,8 @@ export async function scrapeDetailPage(
   page: Page,
   url: string
 ): Promise<DetailResult> {
-  await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
-  await new Promise((r) => setTimeout(r, 2000));
+  await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
+  await page.waitForTimeout(2000);
 
   const result: DetailResult = {
     aktenzeichen: "",
