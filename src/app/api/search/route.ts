@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import Kernel from "@onkernel/sdk";
+import puppeteer from "puppeteer-core";
 import {
   searchDPMA,
   parseSearchResults,
@@ -26,9 +28,6 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(encodeSSE(event, data)));
       };
 
-      const Kernel = (await import("@onkernel/sdk")).default;
-      const { chromium } = await import("playwright-core");
-
       const kernel = new Kernel();
       let browser: Awaited<ReturnType<typeof kernel.browsers.create>> | null =
         null;
@@ -40,12 +39,11 @@ export async function POST(req: NextRequest) {
 
         send("status", { message: "Verbinde mit Browser..." });
 
-        const pw = await chromium.connectOverCDP(browser.cdp_ws_url, {
-          timeout: 60000,
+        const pw = await puppeteer.connect({
+          browserWSEndpoint: browser.cdp_ws_url,
         });
-        const context = pw.contexts()[0];
-        if (!context) throw new Error("Kein Browser-Context");
-        const page = context.pages()[0] ?? (await context.newPage());
+        const pages = await pw.pages();
+        const page = pages[0] ?? (await pw.newPage());
 
         send("status", {
           message: `Suche nach "${query}" im DPMA-Register...`,
